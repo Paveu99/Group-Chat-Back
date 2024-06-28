@@ -1,6 +1,7 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import { WebSocketServer, WebSocket } from 'ws';
+import { handleError } from './utils/error';
 
 const app = express();
 
@@ -9,6 +10,8 @@ app.use(cors({
 }));
 
 app.use(json());
+
+app.use(handleError);
 
 const server = app.listen(3001, '0.0.0.0', () => {
     console.log('Listening on http://localhost:3001');
@@ -29,9 +32,10 @@ wss.on('connection', (ws: WebSocket) => {
             }
             rooms.get(room)!.add(ws);
             currentRoom = room;
-            console.log(`Client joined room: ${room}`);
+            // console.log(`Client joined room: ${room}`);
         } else if (parsedMessage.type === 'message' && currentRoom) {
             const roomClients = rooms.get(currentRoom);
+            // console.log(roomClients);
             roomClients!.forEach((client: WebSocket) => {
                 if (client !== ws && client.readyState === ws.OPEN) {
                     client.send(JSON.stringify({
@@ -50,7 +54,7 @@ wss.on('connection', (ws: WebSocket) => {
             if (rooms.get(currentRoom)!.size === 0) {
                 rooms.delete(currentRoom);
             }
-            console.log(`Client left room: ${currentRoom}`);
+            // console.log(`Client left room: ${currentRoom}`);
         }
     });
 });
