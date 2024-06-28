@@ -1,6 +1,6 @@
 import express, { json } from 'express';
 import cors from 'cors';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 
 const app = express();
 
@@ -14,22 +14,42 @@ const server = app.listen(3001, '0.0.0.0', () => {
 });
 
 const wss = new WebSocketServer({ server });
+const rooms = new Map<string, Set<WebSocket>>(); // Key: room name, Value: Set of clients
 
-wss.on('connection', (ws) => {
-    console.log('New client connected');
+wss.on('connection', (ws: WebSocket) => {
+    let currentRoom: string | null = null; // Explicitly define the type
 
-    // Send a message to the client
-    ws.send(JSON.stringify({ message: 'Welcome to the WebSocket server!' }));
-
-    // Listen for messages from the client
-    ws.on('message', (message) => {
-        console.log('Got:', message.toString());
-        // Echo the received message back to the client
-        ws.send(message.toString());
+    ws.on('message', (message: string) => {
+        const parsedMessage = JSON.parse(message);
+        if (parsedMessage.type === 'join') {
+            const room = parsedMessage.room;
+            if (!rooms.has(room)) {
+                rooms.set(room, new Set());
+            }
+            rooms.get(room)!.add(ws);
+            currentRoom = room;
+            console.log(`Client joined room: ${room}`);
+        } else if (parsedMessage.type === 'message' && currentRoom) {
+            const roomClients = rooms.get(currentRoom);
+            roomClients!.forEach((client: WebSocket) => {
+                if (client !== ws && client.readyState === ws.OPEN) {
+                    client.send(JSON.stringify({
+                        type: 'message',
+                        content: parsedMessage.content,
+                        room: currentRoom
+                    }));
+                }
+            });
+        }
     });
 
-    // Handle client disconnection
     ws.on('close', () => {
-        console.log('Client disconnected');
+        if (currentRoom) {
+            rooms.get(currentRoom)!.delete(ws);
+            if (rooms.get(currentRoom)!.size === 0) {
+                rooms.delete(currentRoom);
+            }
+            console.log(`Client left room: ${currentRoom}`);
+        }
     });
 });

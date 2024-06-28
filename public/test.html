@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+<h1>WebSocket Test</h1>
+<button onclick="sendMessage()">Send Message</button>
+<div id="messages"></div>
+<script>
+    let ws;
+    const connect = () => {
+        ws = new WebSocket('ws://localhost:3001');
+
+        ws.onopen = () => {
+            console.log('Connected to WebSocket server');
+            document.getElementById('messages').innerHTML += '<p>Connected to WebSocket server</p>';
+        };
+
+        ws.onmessage = (event) => {
+            console.log('Received:', event.data);
+            document.getElementById('messages').innerHTML += `<p>Received: ${event.data}</p>`;
+        };
+
+        ws.onclose = () => {
+            console.log('Disconnected from WebSocket server');
+            document.getElementById('messages').innerHTML += '<p>Disconnected from WebSocket server. Reconnecting...</p>';
+            setTimeout(connect, 1000); // Attempt to reconnect every second
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            document.getElementById('messages').innerHTML += `<p>WebSocket error: ${error.message}</p>`;
+        };
+    };
+
+    connect();
+
+    function sendMessage() {
+        const message = 'Hello, WebSocket!';
+        if (ws.readyState === WebSocket.OPEN) {
+            console.log('Sending:', message);
+            ws.send(message);
+            document.getElementById('messages').innerHTML += `<p>Sending: ${message}</p>`;
+        } else {
+            console.log('WebSocket is not open. Cannot send message.');
+            document.getElementById('messages').innerHTML += '<p>WebSocket is not open. Cannot send message.</p>';
+        }
+    }
+</script>
+</body>
+</html>
